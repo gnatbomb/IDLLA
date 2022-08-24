@@ -8,23 +8,24 @@ import random
 
 random.seed(0)
 
+# Extracts the level information for the original mario levels into a one-hot array.
+# Also creates empty "dummy logs" associated with each level.
 
+# Retrieve level data
 levelfilenames = os.listdir("levelstxt/")
-
 numlevels = len(levelfilenames)
 
+# get the shortest level length. We crop levels to the length of the shortest level.
 levellen = 1000
-
-#get max level size
 for i in range(numlevels):
     level = open('levelstxt/' + levelfilenames[i], 'r')
     if levellen > len(level.readline()):
         levellen = len(level.readline())
 
-print(levellen)
-quit()
+# Create output array for levels.
 onehot = np.zeros((numlevels, 10, levellen, 17), dtype=np.int8)
 
+# Reminder for the indices used for the symbols. 13-15 represidnt bullet bill guns.
 '''0 = empty space
 1 = HILL_TOP
 2 = GROUND
@@ -43,6 +44,7 @@ onehot = np.zeros((numlevels, 10, levellen, 17), dtype=np.int8)
 15 = (byte) (14 + 2 * 16)
 16 = COIN'''
 
+# Conversions from the VGLC level notation to the notation our model uses.
 symboldict = {
     '-': 0,
     'X': 3,
@@ -59,21 +61,25 @@ symboldict = {
     'o': 16,
 }
 
-
+# For each level, convert the txt format into our one-hot array.
 for i in range(numlevels):
     level = open('levelstxt/' + levelfilenames[i], 'r')
+    # Remove top four rows.
     for i in range(4):
         level.readline()
+
     for y in range(10):
         strip = level.readline()
         for x in range(levellen):
             if strip[x] != '\n':
+                # if a block is on the bottom row, record it as a HILL_TOP, otherwise, record it as a rock.
                 if y == 9 and strip[x] == 'X':
                     onehot[i][y][x][1] = 1
                 else:
                     onehot[i][y][x][symboldict[strip[x]]] = 1
 
 
+# Save one-hot array
 np.save("../MarioPCGStudy/OriginalMario/levels", onehot)
 
 
@@ -82,10 +88,16 @@ np.save("../MarioPCGStudy/OriginalMario/levels", onehot)
 # make "log" values:
 logs = np.zeros((numlevels * levellen, 41), dtype=np.int16)
 
-# fill log data with noise, except for output values
+# If fillvalues = 1, set log values randomly. If fillvalues = 0, leave logs empty.
+# Our research used empty logs.
 fillvalues = 0
+
+# Create dummy logs for each level.
 for lvl in range(numlevels):
+    # Used to calculate index in the output array.
     offset = lvl * levellen
+
+    # Create an entry for each x-position in the level.
     for x in range(levellen):
         # Mario moves
         for val in range(3,9):
@@ -117,8 +129,8 @@ for lvl in range(numlevels):
         # Level
         logs[offset + x][39] = lvl
 
-        # Random x
-        logs[offset + x][40] = x#random.randint(0, levellen)
+        # Mario's X
+        logs[offset + x][40] = x
 
-
+# Output dummy logs to file.
 np.savetxt("../MarioPCGStudy/OriginalMario/logs.csv", logs, delimiter=",", fmt='%d')
