@@ -39,4 +39,11 @@ This code uses the following software:
 
 ### 2. (Optional) Re-extract level and log data from the datasets.
 > cd IDLLA/IDLLA Code
+> py GwarioParser.py
+> py OriginalMarioParser.py
+> py PCGLevelExtractor.py
+> py PCGParser.py
+
+### 3. Run desired experiments from Model_Interface.py
+
 
