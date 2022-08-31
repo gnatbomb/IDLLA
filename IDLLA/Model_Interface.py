@@ -16,8 +16,7 @@ from scipy import stats
 metric = 0
 
 # Which experiment to run.
-# 0 = Train on MarioPCG dataset, 1 = output maximally activated filters
-# 2 = Gwario, 3 = Original Mario, 4 = unpublished "data point overlap" experiment (deprecated)
+# 0 = Train on MarioPCG dataset, 1 = output maximally activated filters, 2 = Gwario, 3 = Original Mario
 experiment = 0
 
 # ---------------------------Model Parameters---------------------------------
@@ -70,7 +69,6 @@ metricnames = {
 output_max_filters = False   # Outputs maximally-activated filters
 predict_gwario = False       # Predict Gwario accuracy on trained model
 predict_original = False     # Predict Original mario levels challenge ratings
-trainfolds = False           # Fold checking (deprecated.)
 
 if experiment == 1:
     output_max_filters = True
@@ -78,8 +76,6 @@ if experiment == 2:
     predict_gwario = True
 if experiment == 3:
     predict_original = True
-if experiment == 4:
-    trainfolds = True
 
 
 print("Loading logs...")
@@ -193,7 +189,7 @@ for key in level_names.keys():
 
 
 # Preprocess data
-logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "levels.npy")
+logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "MarioPCG/levels.npy")
 
 # --------------------------------------------vvvvv Constructing our CNN vvvvvv-----------------------------------------------------
 
@@ -201,8 +197,6 @@ logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_s
 flatchunks = np.reshape(chunks, [-1, 3 * chunktotalsize])
 flatlogs = np.reshape(logs, [-1, frame_count * logs.shape[2]])
 final_input = np.concatenate((flatlogs, flatchunks), axis=1)
-
-foldsize = final_input.shape[0] // folds # deprecated.
 
 
 # Build neural network
@@ -379,81 +373,6 @@ if predict_gwario or predict_original:
 
 
 
-# Code used to verify that data points weren't being included indirectly in the verification set.
-# Not presented as part of our publication.
-if trainfolds:
-    out = np.zeros(folds)
-    standin = np.zeros((foldsize, final_input.shape[1]), dtype=np.int8)
-    standinlabels = np.zeros((foldsize, labels.shape[1]), dtype=np.float64)
-
-    testsetinds = np.zeros((foldsize), dtype=np.int8)
-
-    testset = np.zeros((final_input.shape[0]//100, final_input.shape[1]), dtype=np.int8)
-    testsetlabels = np.zeros((final_input.shape[0]//100, labels.shape[1]), dtype=np.float64)
-
-
-    # For data points taken randomly throughout the set.
-    keepindex = 0
-    for i in range(1, final_input.shape[0]):
-        if i % 90 == 0 and keepindex < final_input.shape[0]//100: # For checking if test data is being included indirectly in training set
-            testset[keepindex] = final_input[i]
-            testsetlabels[keepindex] = labels[i]
-            testsetinds[keepindex] = i
-            keepindex += 1
-
-    newfinalinput = np.zeros(final_input.shape, dtype=np.int8)
-    newlabels = np.zeros(labels.shape, dtype=np.int8)
-    newi = 0
-    for i in range(0, final_input.shape[0] // 100):
-        newfinalinput[newi:newi+80] = final_input[i*100:(i*100)+80]
-        newlabels[newi:newi+80] = labels[i*100:(i*100)+80]
-        newi += 80
-    final_input = 0
-    labels = 0
-    endindex = (newfinalinput.shape[0]*4) // 5
-
-
-    for f in range(1):
-        #train
-        model.fit(newfinalinput[0:endindex], newlabels[0:endindex], n_epoch=epochs, batch_size=batch_size, show_metric=True) # test set test
-
-        #output
-        preds = model.predict(testset)
-
-        actuals = testsetlabels
-
-        # Code copied from below.
-        actuals1d = np.zeros(actuals.shape[0], dtype=np.int8)
-        for ts in range(actuals.shape[0]):
-            act = actuals[ts]
-            if act[0]:
-                actuals1d[ts] = 0
-            elif act[1]:
-                actuals1d[ts] = 1
-            else:
-                actuals1d[ts] = 2
-
-        conf_mat = np.zeros((3,3), dtype=np.float32)
-
-        for ts in range(len(preds)):
-            pred = preds[ts]
-            actual = actuals1d[ts]
-            minval = 0
-
-            for i in range(1,3):
-                if pred[minval] < pred[i]:
-                    minval = i
-            conf_mat[minval][actual] += 1
-
-        total = conf_mat.sum()
-        conf_mat = conf_mat / total * 100
-        out[f] = conf_mat[0][0] + conf_mat[1][1] + conf_mat[2][2]
-        print(str(out[f]))
-
-    quit()
-
-
-
 # Train the model (apply gradient descent algorithm)
 if not (predict_gwario or predict_original):
     print("Training...")
@@ -498,6 +417,7 @@ if predict_original:
     print(confidence)
     r = stats.spearmanr(confidence)
     print(r[0])
+    quit()
 
 
 
