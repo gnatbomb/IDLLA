@@ -25,5 +25,15 @@ This work utilized datasets from three other sources, which are cited here:
 
 This work was conducted as part of the University of Alberta GRAIL Lab.
 
-# How to use
+# Software requirements
+This code uses the following software:
+- Python 3.10.4
+- tflearn
+- tensorflow
+- scipy
+- numpy
+
+# How to use this repository
+## 1. Clone the repo
+> 
 
