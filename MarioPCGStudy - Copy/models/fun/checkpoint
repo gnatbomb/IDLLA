@@ -1,0 +1,2 @@
+model_checkpoint_path: "D:\\Research\\Datasets\\MarioPCGStudy\\models\\fun\\model.tflearn"
+all_model_checkpoint_paths: "D:\\Research\\Datasets\\MarioPCGStudy\\models\\fun\\model.tflearn"
