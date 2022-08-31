@@ -23,7 +23,7 @@ def pickle_levels(levels):
     # record data for each level
     for levelname in levels:
         # Get level information from file.
-        file = csv.reader(open('../MarioPCG/LevelParser/Levels/' + levelname))
+        file = csv.reader(open('../MarioPCGStudy/LevelParser/Levels/' + levelname))
         level_data = list(file)
 
         # Retrieve level index
@@ -59,7 +59,7 @@ def extract_all():
     shutil.rmtree(output_folder)
     os.mkdir(output_folder)
 
-    java_levels = os.listdir('../MarioPCG/LevelParser/Levels/')
+    java_levels = os.listdir('../MarioPCGStudy/LevelParser/Levels/')
     pickle_levels(java_levels)
 
 

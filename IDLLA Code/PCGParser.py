@@ -10,7 +10,7 @@ import shutil
 
 # Retrieves log information associated with a single level being played.
 def parse_timeline(filename, foldername, level_data):
-    file = csv.reader(open('AnonymizedDirectory/' + foldername + '/' + filename, newline=''))
+    file = csv.reader(open('../MarioPCGStudy/AnonymizedDirectory/' + foldername + '/' + filename, newline=''))
     instance_events = list(file)
 
     # Used for calculating Mario's x position
@@ -208,7 +208,7 @@ def get_level_data(subject_results, play_order, level_indices):
 # Retrieves the logs associated with a player (represented by foldername).
 def parse_subject(foldername, level_indices):
     os.mkdir(output_folder + '/' + foldername + '/')
-    timelines = os.listdir('AnonymizedDirectory/' + foldername + '/')
+    timelines = os.listdir('../MarioPCGStudy/AnonymizedDirectory/' + foldername + '/')
 
     subject_results = results[results_indices[foldername]]
 
@@ -241,7 +241,7 @@ def parse_all():
 
     output_array = np.zeros((0, 41), dtype=int)
 
-    subjects = os.listdir('AnonymizedDirectory/')
+    subjects = os.listdir('../MarioPCGStudy/AnonymizedDirectory/')
 
     # For each player, retrieve the logs associated with that player.
     for subject in subjects:
@@ -312,9 +312,9 @@ output_header = "StartLevel, WonLevel, LostLevel, Jumping, Right_Move, Left_Move
 event_count = 31
 level_data_count = 9
 
-output_folder = 'output'
+output_folder = 'MarioPCG/Logs'
 
-resultsfile = csv.reader(open('AnonymizedDirectory/AnonResults.csv', newline=''))
+resultsfile = csv.reader(open('../MarioPCGStudy/AnonymizedDirectory/AnonResults.csv', newline=''))
 results = list(resultsfile)
 
 results_indices = {}
