@@ -12,14 +12,14 @@ from scipy import stats
 
 # Load CSV file, indicate that the first column represents labels
 from tflearn.data_utils import load_csv
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # Disables GPU processing. Turned out to be slower than CPU on our machine.
 
 # set random seeds
 random_seed = 0
 tf.random.set_seed(random_seed)
 random.seed(random_seed)
 
-# Set to change what metric we are using. Use metricnames for reference for values.
+# Which metric we use. Metric indices shown in metricnames.
 metric = 2
 metricnames = {
     0: "models/fun/model.tflearn",
@@ -30,7 +30,52 @@ metricnames = {
 
 
 
+# Ignore 'Fun' = 31, 'Frustration' = 32, 'Challenge' = 33, and 'Design' = 34 columns
+# Seemingly removes the demographic information, but those are kept.
+# reminder: The target column is removed, so each one after that is 1 less.
+to_ignore=[]
+for i in range(31, 38):
+    to_ignore.append(i)
 
+# Model parameters. Can change these to change the model.
+frame_count = 10        # How many frames we should capture.
+conv_size = 5           # How large we want our convolution layers to be
+kernels = 8             # How many kernels we wish to use
+dropout = 0.98          # Dropout layer keep rate
+poolsize = (3, 3)       # Convolution pool size
+epochs = 30             # Number of training epochs
+learning_rate = 0.00007 # Learning rate of the model
+batch_size = 32         # How long we go before updating the model
+folds = 10              # Number of folds (deprecated, might remove)
+
+# Do not change these model parameters unless heavily altering this code.
+chunksize = 10      # How large each level chunk should be
+num_symbols = 17    # How many block types exist.
+chunktotalsize = chunksize * chunksize * num_symbols        # Used for math stuff for slicing chunks.
+
+
+
+# Which experiment we are running.
+output_max_filters = False   # Outputs maximally-activated filters
+predict_gwario = False       # Predict Gwario accuracy on trained model
+predict_original = False     # Predict Original mario levels challenge ratings
+trainfolds = False           # Fold checking (deprecated.)
+
+experiment = 3
+
+if experiment == 1:
+    output_max_filters = True
+if experiment == 2:
+    predict_gwario = True
+if experiment == 3:
+    predict_original = True
+
+
+
+randomize_gwario = True      # Whether to randomize the level flags for gwario or original level experiments
+
+
+# -------------------------------------------------------- NO CHANGES SHOULD BE NECESSARY BELOW THIS LINE -------------------------------------
 
 print("Loading logs...")
 # fun = 31, frust = 32, challenge = 33, design = 34
@@ -38,46 +83,34 @@ logs, labels = load_csv('output/results.csv', target_column=31+metric, categoric
 print("Loading complete!")
 
 
+
 # Preprocessing function
+# Returns formatted logs, chunks, and level information.
 def preprocess(timesteps, columns_to_delete, frame_count, chunksize, num_symbols, levelfilename):
     print("Preprocessing...")
-    
-    metadata = []
-    # preserve metadata
-    # 'Fun', 'Frustration', 'Challenge', 'Design', 'SMBRank', 'MarioRank', 'PlatformerRank', 'GamesRank', 'Level_ind', mariox
-    for ts in range(len(timesteps)):
-        meta = []
-        for col in range(34, 38):
-            meta.append(timesteps[ts][col])
-        metadata.append(meta)
 
-    # get frame data
-    # levels[level][y][x][symbol]
+    # Get level data for getting chunks. 
+    # Flattens the level array and takes a chunksize x chunksize x num_symbols sized slice from the flattened array.
     levels = np.load(levelfilename)
-
-
-    #for y in range(10):
-        #oo = []
-        #for x in range(10):
-            #oo.append(levels[0][y][x][0])
-        #print(oo)
-
     flatlevels = levels.flatten()
 
-
-    minx = 0#math.ceil(chunksize / 2)
+    # Level boundaries
+    minx = 0
     maxx = levels.shape[2] - minx - 1
 
+    # Used for math operations for getting the relevant slices of the levels.
     chunklen = chunksize * chunksize * num_symbols
     levelmult = levels.shape[1] * levels.shape[2] * levels.shape[3]
     marioxmult = levels.shape[3]
 
-    #chunks = np.zeros((len(timesteps), chunksize, chunksize, num_symbols), dtype=np.int8)
+    # Final chunks output array
     chunks = np.zeros((len(timesteps) - frame_count, 3, chunklen), dtype=np.int8)
 
     
-
+    # For each timestep, grab the related chunk given the level number and mario x.
     for ts in range(len(timesteps) - frame_count):
+        # Grabs the 3 chunks from the start, middle, and end of the frame range.
+        # One at frame 0, frame (framecount / 2), and frame (framecount)
         for step in range(3):
             stepval = 0
             if step == 1:
@@ -93,31 +126,31 @@ def preprocess(timesteps, columns_to_delete, frame_count, chunksize, num_symbols
 
             level = int(timesteps[ts][-2])
             chunkstart = (level * levelmult) + (mariox * marioxmult)
-            #chunks[ts] = levels[level][0:chunksize][mariox - minx : mariox + minx]
-            #chunkbuild = np.zeros((chunksize, chunklen), dtype=np.int8)
-            #for i in range(chunksize):
-                #chunkbuild[i] = flatlevels[chunkstart + (newymult * i) :chunkstart + (newymult * i) + chunklen]
             
+            # Slice the chunk from the flattened levels array
             chunks[ts][step] = flatlevels[chunkstart:chunkstart + chunklen]
-        
-        #for x in range(chunksize):
-        #    for y in range(chunksize):
-        #        for sym in range(num_symbols):
-        #            metadata[ts].append(levels[level][y][x][sym])
 
+    # We are now done collecting level chunks.
+    # Moving on to logs now.
 
-    # Sort by descending id and delete columns
+    # preserve player demographic information
+    # For reference, 31-39 are: 'Fun', 'Frustration', 'Challenge', 'Design', 'SMBRank', 'MarioRank', 'PlatformerRank', 'GamesRank', 'Level_ind', mariox
+    metadata = []
+    for ts in range(len(timesteps)):
+        meta = []
+        for col in range(34, 38):
+            meta.append(timesteps[ts][col])
+        metadata.append(meta)
+
+    # Remove ignored columns
     for column_to_delete in sorted(columns_to_delete, reverse=True):
         [timestep.pop(column_to_delete) for timestep in timesteps]
 
-
-
-    #check multi-chunks
+    # Append metadata to each frame so it only appears once per set of frames, rather than 10 times per set of frames.
     for ts in range(len(timesteps)):
-        #for frame in range(1, frame_count):
-        #    timesteps[ts].extend(timesteps[ts + frame])
         timesteps[ts].extend(metadata[ts])
 
+    # Start making the final array for outputting.
     event_count = len(timesteps[0])
     ts_count = len(timesteps)
     
@@ -128,8 +161,9 @@ def preprocess(timesteps, columns_to_delete, frame_count, chunksize, num_symbols
         final_array[ts] = timesteps[ts:ts+frame_count]
     
     print("Preprocessing complete!")
-    return final_array, chunks, levels #np.array(timesteps, dtype=np.int8)
+    return final_array, chunks, levels
 
+# Filenames for the different levels.
 level_names = {0: 'TestLevelC0.csv',
 1: 'TestLevelB11.csv',
 2: 'MarioLevel.csv',
@@ -147,70 +181,36 @@ level_names = {0: 'TestLevelC0.csv',
 14: 'TestLevelD2.csv',
 15: 'TestLevelD1.csv'}
 
+# Reverse dictionary for looking up which level is used.
 level_indices = {}
 for key in level_names.keys():
     level_indices[level_names[key]] = key
 
-# Ignore 'Fun' = 31, 'Frustration' = 32, 'Challenge' = 33, and 'Design' = 34 columns
-# reminder: The target column is removed, so each one after that is 1 less.
-to_ignore=[]
-for i in range(31, 38):
-    to_ignore.append(i)
-
-# Logs stuff
-frame_count = 10
-chunksize = 10
-num_symbols = 17
-chunktotalsize = chunksize * chunksize * num_symbols
-
-
-# Model stuff
-conv_size = 5
-kernels = 8
-dropout = 0.98
-poolsize = (3, 3)
-epochs = 30
-learning_rate = 0.00007
-batch_size = 32
-folds = 10
-
-
-
-
-# Run types.
-output_explanation = False  # Outputs maximally-activated filters
-predict_gwario = False       # Predict gwario stuff
-predict_original = True
-randomize_gwario = True     # Whether to randomize the level flags for gwario data
-trainfolds = False
-
 
 # Preprocess data
 logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "LevelsTxt/onehot.npy")
+
+# --------------------------------------------vvvvv Constructing our CNN vvvvvv-----------------------------------------------------
 
 # Flatten and append logs and chunks
 flatchunks = np.reshape(chunks, [-1, 3 * chunktotalsize])
 flatlogs = np.reshape(logs, [-1, frame_count * logs.shape[2]])
 final_input = np.concatenate((flatlogs, flatchunks), axis=1)
 
-foldsize = final_input.shape[0] // folds
+foldsize = final_input.shape[0] // folds # deprecated.
 
-
-
-    
-
-#final_input = flatchunks
 
 # Build neural network
 print("Building model...")
 
-
 # Input
 inputlayer = tflearn.input_data(shape=[None, final_input.shape[1]]) 
 
+# Separate out the chunks and logs layers
 logsflat = tf.slice(inputlayer, [0,0],[-1, flatlogs.shape[1]])
 chunksflat = tf.slice(inputlayer, [0, flatlogs.shape[1]], [-1, flatchunks.shape[1]])
 
+# Reshape the logs and chunks layers
 logsshape = tf.reshape(logsflat, [-1, frame_count, logs.shape[2]])
 print("logsshape = " + str(logsshape))
 chunksshape = tf.reshape(chunksflat, [-1, chunksize, chunksize, num_symbols])
@@ -222,9 +222,6 @@ print("chunksshape = " + str(chunksshape))
 logsconv1 = tflearn.conv_1d(logsshape, kernels, conv_size, logs.shape[2], activation='relu')
 print("Logsconv1shape = " + str(logsconv1))
 
-# Layer
-#net = tflearn.fully_connected(net, len(logs[0][0]), activation='relu',)
-
 # max-pool 2x2 kernels
 logsmax1 = tflearn.max_pool_1d(logsconv1, 2, kernels)
 print("logsmaxshape = " + str(logsmax1))
@@ -232,15 +229,6 @@ print("logsmaxshape = " + str(logsmax1))
 # Convolution 8 kernels (len(logs[0][0]) * frame_count)
 logsconv2 = tflearn.conv_1d(logsmax1, kernels * 2, (conv_size - 2, len(logs[0][0])), activation='relu')
 print("Logsconv2shape = " + str(logsconv2))
-# LSTM
-#logsnet = tflearn.lstm(logsnet, 64, dropout=dropout, activation='relu', return_seq=True)
-#logsnet = tflearn.lstm(logsnet, 64, dropout=dropout, activation='relu', return_seq=True)
-
-# layer
-#net = tflearn.fully_connected(net, len(logs[0][0]) * poolsize[0] * poolsize[1], activation='relu')
-
-# nother layer
-#net = tflearn.fully_connected(net, len(logs[0][0]), activation='relu')
 
 
 # CHUNKS STUFF
@@ -254,37 +242,41 @@ print("chunksmax1 = " + str(chunksmax1))
 chunksconv2 = tflearn.conv_2d(chunksmax1, kernels, (conv_size, conv_size), activation='relu')
 print("chunksconv2 = " + str(chunksconv2))
 
-# Mix it all together
+# Flatten the logs and chunks portions to combine them
 logsnet = tf.reshape(logsconv2, [-1, logsconv2.shape[1] * logsconv2.shape[2]])
 chunksnet = tf.reshape(chunksconv2, [-1, 3 * chunksconv2.shape[1] * chunksconv2.shape[2] * chunksconv2.shape[3]])
 print("Chunksnet = " + str(chunksnet))
+
+# Combine logs and chunks.
 finalnet = tf.concat([logsnet, chunksnet], 1)
 print("finalnet = " + str(finalnet))
 
-#finalnet = chunksnet
-
-# Dropout
+# Dropout layer.
 finalnetdropout = tflearn.dropout(finalnet, dropout)
 
-
+# Fully connected layer
 finalnetfullyconnected = tflearn.fully_connected(finalnetdropout, final_input.shape[1], activation='relu')
 print("finalnetfullyconnected = " + str(finalnetfullyconnected))
-#Faster version, previous version as of before july 12
-#finalnetfullyconnected = tflearn.fully_connected(finalnetdropout, 128, activation='relu')
 
-# Output layer
+# Output layer. Output of 0 = most x rating, 1 = mid x rating, 2 = least x rating.
+# Where x is the metric being predicted.
 finalnetout = tflearn.fully_connected(finalnetfullyconnected, 3, activation='softmax')
 print("finalnetout = " + str(finalnetout))
+
+
 finalnetregression = tflearn.regression(finalnetout, learning_rate=learning_rate)
 # Define model
 model = tflearn.DNN(finalnetregression)
 
+# ------------------------------------------------DONE CONSTRUCTING THE MODEL------------------------------------------
 
-# Find max activating chunks
-if output_explanation:
+# Output maximally activated chunks.
+# For each level, prints out the maximally activating chunk for each filter.
+if output_max_filters:
     model.load(metricnames[metric])
     weights = np.array(model.get_weights(chunksconv1.W))
 
+    # Activation rating for each 5x5 xy position.
     levelscores = np.zeros((levels.shape[0], levels.shape[1] - weights.shape[0], levels.shape[2] - weights.shape[1], weights.shape[3]))
 
     # change weights for faster matrix multiplication
@@ -295,8 +287,6 @@ if output_explanation:
             for x in range(weights.shape[1]):
                 for symbol in range(weights.shape[2]):
                     newweights[filter][y][x][symbol] = weights[y][x][symbol][filter]
-
-    flevels = np.zeros((levels.shape[0], levels.shape[1] - weights.shape[0], levels.shape[2] - weights.shape[0], ))
 
     # For recording the parts of the levels with the highest activations
     maxsections = np.zeros((levels.shape[0], weights.shape[3], weights.shape[1], weights.shape[0]), dtype=np.int8)
@@ -357,22 +347,19 @@ if output_explanation:
                         littlemaxsections[filter][y][x] = symbol
     quit()
 
-levels = 5
 
+# Prepares data for performing gwario or original dataset experiments
 if predict_gwario or predict_original:
     model.load(metricnames[metric])
 
-    # get gwario logs
+    # get relevant logs and preprocess the data
     if predict_original:
         logs, labels = load_csv('OriginalMario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3) 
-    else:
-        logs, labels = load_csv('gwario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3)   
-
-    # Preprocess data
-    if predict_original:
         logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "OriginalMario/levels.npy")
     else:
+        logs, labels = load_csv('gwario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3)   
         logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "gwario/GwarioLevels.npy")
+        
 
     # Randomize the level flag
     if randomize_gwario:
@@ -380,66 +367,30 @@ if predict_gwario or predict_original:
             for j in range(logs.shape[1]):
                 logs[i][j][-2] = random.randint(0, 15)
 
+    # These are used later.
     flatchunks = np.reshape(chunks, [-1, 3 * chunktotalsize])
-
     flatlogs = np.reshape(logs, [-1, frame_count * logs.shape[2]])
-
     final_input = np.concatenate((flatlogs, flatchunks), axis=1)
 
-    #final_input = np.reshape(chunks, [-1, 3 * chunktotalsize])
-
-    '''
-    # predict
-    preds = model.predict(chunksflat)
-
-    predvals = np.zeros(preds.shape[0], dtype=np.int8)
-
-    for ts in range(preds.shape[0]):
-        maxpred = 0
-        maxrate = preds[ts][0]
-        if maxrate < preds[ts][1]:
-            maxpred = 1
-            maxrate = preds[ts][1]
-        if maxrate < preds[ts][2]:
-            maxpred = 2
-        
-        predvals[ts] = maxpred
 
 
-
-    quit()'''
-trainfolds = True
-# k folds training
-if trainfolds and not (predict_gwario or predict_original):
-    #shuffleinput = np.zeros((final_input.shape[0] + 1, final_input.shape[1]+3), dtype=np.int8)
-    #for i in range(final_input.shape[0]):
-    #    shuffleinput[i][0:-3] = final_input[i]
-    #    shuffleinput[i][-3:] = labels[i]
-    #np.random.shuffle(shuffleinput)
-    #for i in range(final_input.shape[0]):
-    #    final_input[i] = shuffleinput[i][:-3]
-    #    labels[i] = shuffleinput[i][-3:]
-    #shuffleinput = 0
-
+# Code used to verify that data points weren't being included indirectly in the verification set.
+# Not presented as part of our publication.
+if trainfolds:
     out = np.zeros(folds)
     standin = np.zeros((foldsize, final_input.shape[1]), dtype=np.int8)
     standinlabels = np.zeros((foldsize, labels.shape[1]), dtype=np.float64)
 
     testsetinds = np.zeros((foldsize), dtype=np.int8)
-    #testset = np.zeros((foldsize, final_input.shape[1]), dtype=np.int8)
-    #testsetlabels = np.zeros((foldsize, labels.shape[1]), dtype=np.float64)
+
     testset = np.zeros((final_input.shape[0]//100, final_input.shape[1]), dtype=np.int8)
     testsetlabels = np.zeros((final_input.shape[0]//100, labels.shape[1]), dtype=np.float64)
-    #keepindex = foldsize
-    #testset = final_input[-keepindex:]
-    #testsetlabels = labels[-(keepindex+10):-10]
+
 
     # For data points taken randomly throughout the set.
-    keeprate = 0.15
     keepindex = 0
     for i in range(1, final_input.shape[0]):
-        #if keepindex < foldsize and random.random() < keeprate:
-        if i % 90 == 0 and keepindex < final_input.shape[0]//100: # For testing if test data is being included indirectly in training set
+        if i % 90 == 0 and keepindex < final_input.shape[0]//100: # For checking if test data is being included indirectly in training set
             testset[keepindex] = final_input[i]
             testsetlabels[keepindex] = labels[i]
             testsetinds[keepindex] = i
@@ -455,32 +406,18 @@ if trainfolds and not (predict_gwario or predict_original):
     final_input = 0
     labels = 0
     endindex = (newfinalinput.shape[0]*4) // 5
-    #for i in range(keepindex):
-    #    r = testsetinds[i]
-        #final_input[r] = final_input[-i]
-        #labels[r] = labels[(-i-10)]
-    
-    #final_input[-keepindex:] = testset
-    #labels[-keepindex:-10] = testsetlabels'''
 
 
     for f in range(1):
         #train
         model.fit(newfinalinput[0:endindex], newlabels[0:endindex], n_epoch=epochs, batch_size=batch_size, show_metric=True) # test set test
-        #model.fit(final_input[0:-keepindex], labels[0:-(keepindex + 10)], n_epoch=epochs, batch_size=batch_size, show_metric=True)
-        #fold_input = 0
-        #fold_actuals = 0
-
-
 
         #output
-        #fold_testset = final_input[(folds-1)*foldsize:(folds)*foldsize]
         preds = model.predict(testset)
-        #fold_testset = 0
 
-        #actuals = labels[(folds-1)*foldsize:(folds)*foldsize]
         actuals = testsetlabels
 
+        # Code copied from below.
         actuals1d = np.zeros(actuals.shape[0], dtype=np.int8)
         for ts in range(actuals.shape[0]):
             act = actuals[ts]
@@ -508,30 +445,17 @@ if trainfolds and not (predict_gwario or predict_original):
         out[f] = conf_mat[0][0] + conf_mat[1][1] + conf_mat[2][2]
         print(str(out[f]))
 
-        #standin = final_input[0:foldsize]
-        #standinlabels = labels[0:foldsize]
-        #for section in range(folds - 1):
-        #    final_input[section*foldsize:(section+1)*foldsize] = final_input[(section+1)*foldsize:(section+2)*foldsize]
-        #    labels[section*foldsize:(section+1)*foldsize] = labels[(section+1)*foldsize:(section+2)*foldsize]
-        #final_input[(folds-1)*foldsize:] = standin
-        #labels[(folds-1)*foldsize:-10] = standinlabels
-        
-    
-    #print(out)
-    #print("Total Acc: " + str(sum(out) / folds))
     quit()
 
 
 
-# Start training (apply gradient descent algorithm)
+# Train the model (apply gradient descent algorithm)
 if not (predict_gwario or predict_original):
     print("Training...")
     model.fit(final_input, labels, n_epoch=epochs, batch_size=batch_size, show_metric=True)
 
 
-
-
-# get prediction set
+# Randomly select test set. 
 pred_freq = 0.1
 if predict_gwario or predict_original:
     pred_freq = 1.0
@@ -543,13 +467,12 @@ for frame in range(len(final_input)):
         actuals.append(labels[frame])
 
 
-
+# Output model predictions
 pred_array = np.array(pred_list, dtype=np.int8)
 preds = model.predict(pred_array)
 
+# Outputs ratings for original mario levels.
 if predict_original:
-    #levels = np.load("OriginalMario/levels.npy") #unnecesary
-    # Here we output overall values instead of strict values.
     confidence = np.zeros((levels.shape[0], 4))
     levelnumbers = [1,2,3,5,9,11,13,14,17,19,21,22,23,25,29]
 
@@ -572,36 +495,6 @@ if predict_original:
     print(r[0])
 
 
-if predict_gwario and False:
-    #levels = np.load("OriginalMario/levels.npy") #unnecesary
-    # Here we output overall values instead of strict values.
-    confidence = np.zeros((levels.shape[0], 4))
-
-    for lvl in range(levels.shape[0]):
-        confidence[lvl][0] = lvl
-        for x in range(0, levels.shape[2] - 11):
-            confidence[lvl][1:] += preds[lvl * levels.shape[2] + x]
-        confidence[lvl][1:] /= (levels.shape[2] - 11)
-
-        for i in range(1,4):
-            # Make printout nicer
-            l = str(confidence[lvl][i]).split('.')[0]
-            r = str(confidence[lvl][i]).split('.')[1]
-            l += "."
-            l += r[0:4]
-            confidence[lvl][i] = float(l)
-        
-        confidence[lvl][0] = (2 * confidence[lvl][1]) + (1 * confidence[lvl][2])
-
-    print(confidence)
-
-
-    quit()
-
-
-
-
-
 
 actuals1d = np.zeros(len(actuals), dtype=np.int32)
 
@@ -614,28 +507,23 @@ for ts in range(len(actuals)):
     else:
         actuals1d[ts] = 2
 
+# confusion matrix for checking if we are over/underfitting.
 conf_mat = np.zeros((3,3), dtype=np.float32)
 
 for ts in range(len(preds)):
     pred = preds[ts]
     actual = actuals1d[ts]
-    minval = 0
+    maxval = 0
 
+    # Gets highest prediction
     for i in range(1,3):
-        if pred[minval] < pred[i]:
-            minval = i
-    conf_mat[minval][actual] += 1
-
-    #conf_mat[0][actual] += pred[0]
-    #conf_mat[1][actual] += pred[1]
-    #conf_mat[2][actual] += pred[2]
-
-
-#tf.math.confusion_matrix(preds1d, actuals1d, num_classes=3))
-#quit()
+        if pred[maxval] < pred[i]:
+            maxval = i
+    conf_mat[maxval][actual] += 1
 
 
 
+# Outputs run information
 print("Run data:")
 print("Predicted metric: " + str(31 + metric))
 print("Ignored flags: " + str(to_ignore))
@@ -649,10 +537,12 @@ print("Batch size: " + str(batch_size))
 print("Learning rate: " + str(learning_rate))
 
 print("Results:")
+
+# Converts confusion matrix into percentages.
 total = conf_mat.sum()
 conf_mat = conf_mat / total * 100
 
-
+# Formats output strings for confusion matrix
 for i in range(3):
     for j in range(3):
         lefthalf = str(conf_mat[i][j]).split('.')[0]
@@ -665,9 +555,11 @@ print("Total accuracy: " + str(conf_mat[0][0] + conf_mat[1][1] + conf_mat[2][2])
 
 print(conf_mat)
 
+# Outputs prediction rates and accuracies of each of the prediction classes.
 print("Prediction rates:")
 for i in range(0, 3):
     print(str(i) + " preds: " + str(conf_mat[i].sum()) + "    " + str(i) + " accuracy: " + str(100 * conf_mat[i][i] / conf_mat[i].sum()))
 
+# Saves the model for later use.
 if not predict_gwario or predict_original:
     model.save(metricnames[metric])
