@@ -22,10 +22,10 @@ random.seed(random_seed)
 # Which metric we use. Metric indices shown in metricnames.
 metric = 2
 metricnames = {
-    0: "models/fun/model.tflearn",
-    1: "models/frustration/model.tflearn",
-    2: "models/challenge/model.tflearn",
-    3: "models/design/model.tflearn"
+    0: "Models/fun/model.tflearn",
+    1: "Models/frustration/model.tflearn",
+    2: "Models/challenge/model.tflearn",
+    3: "Models/design/model.tflearn"
 }
 
 
@@ -79,7 +79,7 @@ randomize_gwario = True      # Whether to randomize the level flags for gwario o
 
 print("Loading logs...")
 # fun = 31, frust = 32, challenge = 33, design = 34
-logs, labels = load_csv('output/results.csv', target_column=31+metric, categorical_labels=True, n_classes=3)
+logs, labels = load_csv('MarioPCG/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3)
 print("Loading complete!")
 
 
@@ -188,7 +188,7 @@ for key in level_names.keys():
 
 
 # Preprocess data
-logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "LevelsTxt/onehot.npy")
+logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "levels.npy")
 
 # --------------------------------------------vvvvv Constructing our CNN vvvvvv-----------------------------------------------------
 
@@ -357,8 +357,8 @@ if predict_gwario or predict_original:
         logs, labels = load_csv('OriginalMario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3) 
         logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "OriginalMario/levels.npy")
     else:
-        logs, labels = load_csv('gwario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3)   
-        logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "gwario/GwarioLevels.npy")
+        logs, labels = load_csv('Gwario/logs.csv', target_column=31+metric, categorical_labels=True, n_classes=3)   
+        logs, chunks, levels = preprocess(logs, to_ignore, frame_count, chunksize, num_symbols, "Gwario/levels.npy")
         
 
     # Randomize the level flag

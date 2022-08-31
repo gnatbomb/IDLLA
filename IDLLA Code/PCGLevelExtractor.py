@@ -49,21 +49,17 @@ def pickle_levels(levels):
                     onehot[level][y][x][0] = 1
 
     # Save the output
-    np.save(output_folder + "onehot", onehot)
+    np.save(output_folder + "levels", onehot)
     return
 
 
 # Main function call.
 def extract_all():
-    # Deletes old files and remakes the directory.
-    shutil.rmtree(output_folder)
-    os.mkdir(output_folder)
-
     java_levels = os.listdir('../MarioPCGStudy/LevelParser/Levels/')
     pickle_levels(java_levels)
 
 
-output_folder = "MarioPCG/Levels/"
+output_folder = "MarioPCG/"
 
 
 extract_all()

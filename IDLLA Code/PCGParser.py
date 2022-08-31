@@ -159,8 +159,6 @@ def parse_timeline(filename, foldername, level_data):
             for evcode in range(level_data_count):
                 timeline[-1][event_count + evcode] = register[event_count + evcode]
 
-    # Saves the individual level's one-hot output.
-    np.savetxt(output_folder + "/" + foldername + "/" + filename, timeline, header=output_header, delimiter=",", fmt='%d')
     return timeline
     
 
@@ -207,7 +205,6 @@ def get_level_data(subject_results, play_order, level_indices):
 
 # Retrieves the logs associated with a player (represented by foldername).
 def parse_subject(foldername, level_indices):
-    os.mkdir(output_folder + '/' + foldername + '/')
     timelines = os.listdir('../MarioPCGStudy/AnonymizedDirectory/' + foldername + '/')
 
     subject_results = results[results_indices[foldername]]
@@ -225,10 +222,6 @@ def parse_subject(foldername, level_indices):
 
 # Retrieves and formats all log data
 def parse_all():
-    # Delete old files and remake output folder
-    shutil.rmtree(output_folder + '/')
-    os.mkdir(output_folder)
-
     level_indices = {}
     level_index = 0
 
@@ -249,7 +242,7 @@ def parse_all():
             output_array = np.concatenate((output_array, parse_subject(subject, level_indices)))
 
     # Save the final output array
-    np.savetxt(output_folder + "/" + "results.csv", output_array, header=output_header, delimiter=",", fmt='%d')
+    np.savetxt("MarioPCG/logs.csv", output_array, header=output_header, delimiter=",", fmt='%d')
 
     
 
@@ -312,8 +305,6 @@ output_header = "StartLevel, WonLevel, LostLevel, Jumping, Right_Move, Left_Move
 event_count = 31
 level_data_count = 9
 
-output_folder = 'MarioPCG/Logs'
-
 resultsfile = csv.reader(open('../MarioPCGStudy/AnonymizedDirectory/AnonResults.csv', newline=''))
 results = list(resultsfile)
 
@@ -323,5 +314,3 @@ for i in range(1, len(results) ):
     results_indices[results[i][0]] = i
 
 parse_all()
-
-

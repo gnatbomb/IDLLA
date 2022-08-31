@@ -150,7 +150,7 @@ for lvl in range(4):
                 onehot[lvl][y][x][0] = 1
 
 # Save the level array
-np.save("Gwario/GwarioLevels", onehot)
+np.save("Gwario/levels", onehot)
 
 
 # Finally we make the "dummy log" values. 
