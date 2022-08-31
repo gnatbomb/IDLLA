@@ -23,7 +23,7 @@ def pickle_levels(levels):
     # record data for each level
     for levelname in levels:
         # Get level information from file.
-        file = csv.reader(open('LevelParser/Levels/' + levelname))
+        file = csv.reader(open('../MarioPCG/LevelParser/Levels/' + levelname))
         level_data = list(file)
 
         # Retrieve level index
@@ -49,21 +49,21 @@ def pickle_levels(levels):
                     onehot[level][y][x][0] = 1
 
     # Save the output
-    np.save(output_folder + "/onehot", onehot)
+    np.save(output_folder + "onehot", onehot)
     return
 
 
 # Main function call.
 def extract_all():
     # Deletes old files and remakes the directory.
-    shutil.rmtree(output_folder + '/')
+    shutil.rmtree(output_folder)
     os.mkdir(output_folder)
 
-    java_levels = os.listdir('LevelParser/Levels/')
+    java_levels = os.listdir('../MarioPCG/LevelParser/Levels/')
     pickle_levels(java_levels)
 
 
-output_folder = "LevelsTxt"
+output_folder = "MarioPCG/Levels/"
 
 
 extract_all()
