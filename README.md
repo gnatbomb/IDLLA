@@ -23,3 +23,7 @@ This work utilized datasets from three other sources, which are cited here:
 "The vglc: The video game level corpus." by Summerville, Adam James, Sam Snodgrass, Michael Mateas, and Santiago Ontanón. arXiv preprint arXiv:1606.07487 (2016).
 > https://github.com/TheVGLC/TheVGLC
 
+This work was conducted as part of the University of Alberta GRAIL Lab.
+
+# How to use
+
