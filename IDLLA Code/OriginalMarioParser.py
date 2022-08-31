@@ -12,13 +12,13 @@ random.seed(0)
 # Also creates empty "dummy logs" associated with each level.
 
 # Retrieve level data
-levelfilenames = os.listdir("levelstxt/")
+levelfilenames = os.listdir("../OriginalMario/levelstxt/")
 numlevels = len(levelfilenames)
 
 # get the shortest level length. We crop levels to the length of the shortest level.
 levellen = 1000
 for i in range(numlevels):
-    level = open('levelstxt/' + levelfilenames[i], 'r')
+    level = open('../OriginalMario/levelstxt/' + levelfilenames[i], 'r')
     if levellen > len(level.readline()):
         levellen = len(level.readline())
 
@@ -63,7 +63,7 @@ symboldict = {
 
 # For each level, convert the txt format into our one-hot array.
 for i in range(numlevels):
-    level = open('levelstxt/' + levelfilenames[i], 'r')
+    level = open('../OriginalMario/levelstxt/' + levelfilenames[i], 'r')
     # Remove top four rows.
     for i in range(4):
         level.readline()
@@ -80,9 +80,7 @@ for i in range(numlevels):
 
 
 # Save one-hot array
-np.save("../MarioPCGStudy/OriginalMario/levels", onehot)
-
-
+np.save("OriginalMario/levels", onehot)
 
 
 # make "log" values:
@@ -133,4 +131,4 @@ for lvl in range(numlevels):
         logs[offset + x][40] = x
 
 # Output dummy logs to file.
-np.savetxt("../MarioPCGStudy/OriginalMario/logs.csv", logs, delimiter=",", fmt='%d')
+np.savetxt("OriginalMario/logs.csv", logs, delimiter=",", fmt='%d')
