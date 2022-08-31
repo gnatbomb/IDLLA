@@ -34,6 +34,9 @@ This code uses the following software:
 - numpy
 
 # How to use this repository
-## 1. Clone the repo
-> 
+### 1. Clone the repo
+> git clone https://github.com/gnatbomb/IDLLA.git
+
+### 2. (Optional) Re-extract level and log data from the datasets.
+> cd IDLLA/IDLLA Code
 
