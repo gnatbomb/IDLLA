@@ -14,3 +14,12 @@ For citing this work, please use:
 > Citation information will be uploaded once this work is published :P. Feel free to link this repo in the meantime.
 
 This work utilized datasets from three other sources, which are cited here:
+"Game Level Generation from Gameplay Videos" by Matthew Guzdial and Mark O Riedl from the Twelfth Artificial Intelligence and Interactive Digital Entertainment Conference. 
+> http://guzdial.com/datasets/MarioPCGStudy.zip
+
+"Evaluating Singleplayer and Multiplayer in Human Computation Games" by Kristin Siu, Matthew Guzdial, and Mark O Riedl from the Foundations of Digitial Games Conference 2017. 
+> http://guzdial.com/datasets/GwarioData.zip
+
+"The vglc: The video game level corpus." by Summerville, Adam James, Sam Snodgrass, Michael Mateas, and Santiago Ontanón. arXiv preprint arXiv:1606.07487 (2016).
+> https://github.com/TheVGLC/TheVGLC
+
