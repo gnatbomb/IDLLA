@@ -10,25 +10,19 @@ import os
 import math
 from scipy import stats
 
-# Load CSV file, indicate that the first column represents labels
-from tflearn.data_utils import load_csv
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # Disables GPU processing. Turned out to be slower than CPU on our machine.
+# -----------------------------Experiment Settings-----------------------
+# Which metric to measure. 
+# 0 = fun, 1 = frustration, 2 = challenge, 3 = design
+metric = 0
 
-# set random seeds
-random_seed = 0
-tf.random.set_seed(random_seed)
-random.seed(random_seed)
+# Which experiment to run.
+# 0 = Train on MarioPCG dataset, 1 = output maximally activated filters
+# 2 = Gwario, 3 = Original Mario, 4 = unpublished "data point overlap" experiment (deprecated)
+experiment = 0
 
-# Which metric we use. Metric indices shown in metricnames.
-metric = 2
-metricnames = {
-    0: "Models/fun/model.tflearn",
-    1: "Models/frustration/model.tflearn",
-    2: "Models/challenge/model.tflearn",
-    3: "Models/design/model.tflearn"
-}
-
-
+# ---------------------------Model Parameters---------------------------------
+# Whether to randomize the level flags for gwario or original level experiments
+randomize_gwario = True     
 
 # Ignore 'Fun' = 31, 'Frustration' = 32, 'Challenge' = 33, and 'Design' = 34 columns
 # Seemingly removes the demographic information, but those are kept.
@@ -48,20 +42,35 @@ learning_rate = 0.00007 # Learning rate of the model
 batch_size = 32         # How long we go before updating the model
 folds = 10              # Number of folds (deprecated, might remove)
 
-# Do not change these model parameters unless heavily altering this code.
+# Do not change these model parameters unless making large changes to the code.
 chunksize = 10      # How large each level chunk should be
 num_symbols = 17    # How many block types exist.
 chunktotalsize = chunksize * chunksize * num_symbols        # Used for math stuff for slicing chunks.
 
+# -------------------------------End of model parameters---------------------------------
+# -------------------------------No changes should be required below this line----------------------------
 
+# Load CSV file, indicate that the first column represents labels
+from tflearn.data_utils import load_csv
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # Disables GPU processing. Turned out to be slower than CPU on our machine.
 
-# Which experiment we are running.
+# set random seeds
+random_seed = 0
+tf.random.set_seed(random_seed)
+random.seed(random_seed)
+
+metricnames = {
+    0: "Models/fun/model.tflearn",
+    1: "Models/frustration/model.tflearn",
+    2: "Models/challenge/model.tflearn",
+    3: "Models/design/model.tflearn"
+}
+
+# Experiment types
 output_max_filters = False   # Outputs maximally-activated filters
 predict_gwario = False       # Predict Gwario accuracy on trained model
 predict_original = False     # Predict Original mario levels challenge ratings
 trainfolds = False           # Fold checking (deprecated.)
-
-experiment = 3
 
 if experiment == 1:
     output_max_filters = True
@@ -72,12 +81,6 @@ if experiment == 3:
 if experiment == 4:
     trainfolds = True
 
-
-
-randomize_gwario = True      # Whether to randomize the level flags for gwario or original level experiments
-
-
-# -------------------------------------------------------- NO CHANGES SHOULD BE NECESSARY BELOW THIS LINE -------------------------------------
 
 print("Loading logs...")
 # fun = 31, frust = 32, challenge = 33, design = 34
