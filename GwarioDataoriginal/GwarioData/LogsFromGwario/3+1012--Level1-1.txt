@@ -1,6 +1,0 @@
-Player got chocolate
-Player got onion
-Player got orangejuice
-Player got piecrust
-Player had score 4000
-Win!

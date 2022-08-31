@@ -14,7 +14,7 @@ import random
 random.seed(1)
 
 # Get results file for retrieving which levels were played by whom
-resultsfile = csv.reader(open('results.csv'))
+resultsfile = csv.reader(open('../GwarioData/results.csv'))
 results = list(resultsfile)
 
 # For matching level names to indices in the array.
@@ -27,7 +27,7 @@ level_inds = {
 
 # Get level play information. Ignores multiplayer plays.
 singleplays = {}
-levelplays = os.listdir('LogsFromGwario/')
+levelplays = os.listdir('../GwarioData/LogsFromGwario/')
 for i in range(len(levelplays)):
     playstr = levelplays[i]
     # Denotes that the level play was singleplayer
@@ -108,14 +108,14 @@ for i in range(3):
 
 
 # Now, onto getting the level layouts.
-level_files = os.listdir('levels_readable/csv/')
+level_files = os.listdir('../GwarioData/LevelsReadable/csv/')
 
 # Find shortest level length in the set. We crop each level's length to the shortest level in the set.
 shortestlen = 500
 locallen = 0
 
 for i in range(4):
-    file = csv.reader(open("levels_readable/csv/" + level_files[i]))
+    file = csv.reader(open("../GwarioData/LevelsReadable/csv/" + level_files[i]))
     level_data = list(file)
     locallen = 0
     for j in range(len(level_data)):
@@ -130,7 +130,7 @@ onehot = np.zeros((4, 10, shortestlen, 17), dtype=np.int8)
 
 # For each level, set all of the block positions
 for lvl in range(4):
-    file = csv.reader(open("levels_readable/csv/" + level_files[i]))
+    file = csv.reader(open("../GwarioData/LevelsReadable/csv/" + level_files[i]))
     level_data = list(file)
 
     for entry_i in range(len(level_data)):
@@ -150,7 +150,7 @@ for lvl in range(4):
                 onehot[lvl][y][x][0] = 1
 
 # Save the level array
-np.save("../MarioPCGStudy/gwario/GwarioLevels", onehot)
+np.save("Gwario/GwarioLevels", onehot)
 
 
 # Finally we make the "dummy log" values. 
@@ -198,4 +198,4 @@ for lvl in range(4):
         logs[offset + x][40] = x
 
 # Save dummy logs to output.
-np.savetxt("../MarioPCGStudy/gwario/logs.csv", logs, delimiter=",", fmt='%d')
+np.savetxt("Gwario/logs.csv", logs, delimiter=",", fmt='%d')
